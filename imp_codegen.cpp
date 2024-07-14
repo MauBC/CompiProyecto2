@@ -205,8 +205,6 @@ void ImpCodeGen::visit(FCallStatement* s) {
 void ImpCodeGen::visit(ForDoStatement* s) {
   string l1 = next_label();
   string l2 = next_label();
-  // string l3 = next_label();
-  // string l4 = next_label();
   
   current_dir++;
   VarEntry ventry;
