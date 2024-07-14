@@ -12,7 +12,7 @@ using namespace std;
 class FEntry {
 public:
   string fname;
-  ImpType ftype;
+  ImpType ftype; // <TType, vector<TType>> the last element in vector<TType> is rtype
   int mem_locals, max_stack;
 };
 
@@ -50,7 +50,9 @@ public:
   void visit(PrintStatement*);
   void visit(IfStatement*);
   void visit(WhileStatement*);
-  void visit(ReturnStatement* e);
+  void visit(ReturnStatement*);
+  void visit(ForDoStatement*);
+  void visit(FCallStatement*);
   
   ImpType visit(BinaryExp* e);
   ImpType visit(NumberExp* e);

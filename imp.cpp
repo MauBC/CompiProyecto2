@@ -66,8 +66,6 @@ int FCallExp::accept(ImpVisitor* v) {
   return v->visit(this);
 }
 
-
-
 // value visitor
 
 ImpValue BinaryExp::accept(ImpValueVisitor* v) {
@@ -133,6 +131,10 @@ PrintStatement::PrintStatement(Exp* e):e(e) { }
 IfStatement::IfStatement(Exp* c,Body *tb, Body* fb):cond(c),tbody(tb), fbody(fb) { }
 WhileStatement::WhileStatement(Exp* c,Body *b):cond(c),body(b) { }
 ReturnStatement::ReturnStatement(Exp* e):e(e) { }
+//
+ForDoStatement::ForDoStatement(string id, Exp* start, Exp* end, Body* b):id(id), start(start), end(end), body(b) { }
+FCallStatement::FCallStatement(string fname, list<Exp*> args):fname(fname), args(args) { }
+//
 
 StatementList::StatementList():slist() {}
 VarDec::VarDec(string type, list<string> vars):type(type), vars(vars) {}
@@ -148,6 +150,12 @@ PrintStatement::~PrintStatement() { delete e; }
 IfStatement::~IfStatement() { delete fbody; delete tbody; delete cond; }
 WhileStatement::~WhileStatement() { delete body; delete cond; }
 ReturnStatement::~ReturnStatement() { delete e; }
+//
+ForDoStatement::~ForDoStatement() { delete start; delete end; delete body; }
+FCallStatement::~FCallStatement(){
+  while (!args.empty()) { delete args.front();  ; args.pop_front();  }
+}
+//
 
 StatementList::~StatementList() { }
 VarDec::~VarDec() { }
@@ -210,6 +218,15 @@ void Body::accept(ImpVisitor* v) {
 void Program::accept(ImpVisitor* v) {
   return v->visit(this);
 }
+//
+void ForDoStatement::accept(ImpVisitor* v) {
+  return v->visit(this);
+}
+
+void FCallStatement::accept(ImpVisitor* v) {
+  return v->visit(this);
+}
+//
 
 // Value visitor
 
@@ -232,7 +249,6 @@ void WhileStatement::accept(ImpValueVisitor* v) {
 void ReturnStatement::accept(ImpValueVisitor* v) {
   return v->visit(this);
 }
-
 
 void StatementList::accept(ImpValueVisitor* v) {
   return v->visit(this);
@@ -261,6 +277,15 @@ void Body::accept(ImpValueVisitor* v) {
 void Program::accept(ImpValueVisitor* v) {
   return v->visit(this);
 }
+//
+void ForDoStatement::accept(ImpValueVisitor* v) {
+  return v->visit(this);
+}
+
+void FCallStatement::accept(ImpValueVisitor* v) {
+  return v->visit(this);
+}
+//
 
 // Type visitor
 
@@ -312,6 +337,15 @@ void Body::accept(TypeVisitor* v) {
 void Program::accept(TypeVisitor* v) {
   return v->visit(this);
 }
+//
+void ForDoStatement::accept(TypeVisitor* v) {
+  return v->visit(this);
+}
+
+void FCallStatement::accept(TypeVisitor* v) {
+  return v->visit(this);
+}
+//
 
 
 

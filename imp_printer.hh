@@ -19,6 +19,8 @@ public:
   void visit(IfStatement*);
   void visit(WhileStatement*);
   void visit(ReturnStatement*);
+  void visit(ForDoStatement*);
+  void visit(FCallStatement*);
 
   int visit(BinaryExp* e);
   int visit(NumberExp* e);
@@ -27,8 +29,12 @@ public:
   int visit(ParenthExp* e);
   int visit(CondExp* e);
   int visit(FCallExp* e);
-};
 
+private:
+  int indent_level = 0;
+  const int spaces_per_indent = 2; 
+  string getIndentation();
+};
 
 #endif
 

@@ -35,8 +35,9 @@ public:
   void visit(IfStatement*);
   void visit(WhileStatement*);
   void visit(ReturnStatement*);
+  void visit(ForDoStatement*);
+  void visit(FCallStatement*);
 
-  
   int visit(BinaryExp* e);
   int visit(NumberExp* e);
   int visit(TrueFalseExp* e);
@@ -44,6 +45,7 @@ public:
   int visit(ParenthExp* e);
   int visit(CondExp* e);
   int visit(FCallExp* e);
+  
 
 private:
   ImpTypeChecker* analysis;
@@ -51,10 +53,10 @@ private:
   string nolabel;
   int current_label;
   
-  Environment<VarEntry> direcciones;
+  Environment<VarEntry> addresses;
   
-  int current_dir;
-  int max_stack, mem_locals, mem_globals;
+  int current_dir; //
+  int max_stack, mem_locals, mem_globals; // 3
   bool process_global;
   int num_params;
   void codegen(string label, string instr);

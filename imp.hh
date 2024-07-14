@@ -155,6 +155,20 @@ public:
   ~WhileStatement();
 };
 
+//
+class ForDoStatement : public Stm {
+public:
+  string id;
+  Exp* start, *end;
+  Body *body;
+  ForDoStatement(string id, Exp* start, Exp* end, Body* b);
+  void accept(ImpVisitor* v);
+  void accept(ImpValueVisitor* v);
+  void accept(TypeVisitor* v);
+  ~ForDoStatement();
+};
+//
+
 class ReturnStatement : public Stm {
 public:
   Exp* e;
@@ -224,6 +238,18 @@ public:
   ~FunDecList();
 };
 
+//
+class FCallStatement : public Stm {
+public:
+  string fname;
+  list<Exp*> args;
+  FCallStatement(string fname, list<Exp*> args);
+  void accept(ImpVisitor* v);
+  void accept(ImpValueVisitor* v);
+  void accept(TypeVisitor* v);
+  ~FCallStatement();
+};
+//
 
 class Body {
 public:
@@ -247,7 +273,6 @@ public:
   void accept(TypeVisitor* v);
   ~Program();
 };
-
 
 #endif
 

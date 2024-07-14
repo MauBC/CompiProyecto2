@@ -1,5 +1,12 @@
 #include "imp_printer.hh"
 
+
+#include "imp_printer.hh"
+
+string ImpPrinter::getIndentation() {
+  return std::string(indent_level * spaces_per_indent, ' ');
+}
+
 void ImpPrinter::print(Program* p) {
   p->accept(this);
   return;
@@ -7,13 +14,16 @@ void ImpPrinter::print(Program* p) {
 
 void ImpPrinter::visit(Program* p) {
   p->var_decs->accept(this);
+  cout << endl;
   p->fun_decs->accept(this);
   return;
 }
 
 void ImpPrinter::visit(Body * b) {
+  indent_level++;
   b->var_decs->accept(this);
   b->slist->accept(this);
+  indent_level--;
   return;
 }
 
@@ -36,7 +46,7 @@ void ImpPrinter::visit(FunDecList* s) {
 }
 
 void ImpPrinter::visit(FunDec* fd) {
-  cout << "fun " << fd->rtype << " " << fd->fname << "(";
+  cout << getIndentation() << "fun " << fd->rtype << " " << fd->fname << "(";
   bool first = true;
   list<string>::iterator it, vit;
   for (it = fd->types.begin(), vit = fd->vars.begin();
@@ -47,13 +57,13 @@ void ImpPrinter::visit(FunDec* fd) {
   }
   cout << ")" << endl;
   fd->body->accept(this);
-  cout << "endfun";
+  cout << getIndentation() << "endfun" << endl;
   return;
 }
 			  
 void ImpPrinter::visit(VarDec* vd) {
   bool first = true;
-  cout << "var " << vd->type << " ";
+  cout << getIndentation() << "var " << vd->type << " ";
   list<string>::iterator it;
   for (it = vd->vars.begin(); it != vd->vars.end(); ++it){
     if (!first) cout << ", ";
@@ -73,42 +83,68 @@ void ImpPrinter::visit(StatementList* s) {
 }
 
 void ImpPrinter::visit(AssignStatement* s) {
-  cout << s->id << " = ";
+  cout << getIndentation() << s->id << " = ";
   s->rhs->accept(this);
   return;
 }
 
 void ImpPrinter::visit(PrintStatement* s) {
-  cout << "print(";
+  cout << getIndentation() << "print(";
   s->e->accept(this);
   cout << ")";
   return;
 }
 
 void ImpPrinter::visit(IfStatement* s) {
-  cout << "if";
+  cout << getIndentation() << "if (";
   s->cond->accept(this);
-  cout << " then" << endl;;
+  cout << ") then" << endl;;
   s->tbody->accept(this);
   if (s->fbody!=NULL) {
-    cout << "else" << endl;
+    cout << getIndentation() << "else" << endl;
     s->fbody->accept(this);
   }
-  cout << "endif";
+  cout << getIndentation() << "endif";
   return;
 }
 
-void ImpPrinter::visit(WhileStatement* s) {
-  cout << "while ";
-  s->cond->accept(this);
-  cout << "do" << endl;;
+//
+void ImpPrinter::visit(ForDoStatement* s) {
+  cout << getIndentation() << "for " << s->id << " in (";
+  s->start->accept(this);
+  cout << ", ";
+  s->end->accept(this);
+  cout << ") do" << endl;
   s->body->accept(this);
-  cout << "endwhile";
+  cout << getIndentation() << "endfor";
+  return;
+}
+
+void ImpPrinter::visit(FCallStatement* s) {
+  cout << getIndentation() << s->fname << "(";
+  list<Exp*>::iterator it;
+  bool first = true;
+  for (it = s->args.begin(); it != s->args.end(); ++it) {
+    if (!first) cout << ", ";
+    first = false;
+    (*it)->accept(this);
+  }
+  cout << ")";
+  return;
+}
+//
+
+void ImpPrinter::visit(WhileStatement* s) {
+  cout << getIndentation() << "while (";
+  s->cond->accept(this);
+  cout << ") do" << endl;;
+  s->body->accept(this);
+  cout << getIndentation() << "endwhile";
   return;
 }
 
 void ImpPrinter::visit(ReturnStatement* s) {
-  cout << "return (";
+  cout << getIndentation() << "return (";
   if (s->e != NULL) s->e->accept(this);
   cout << ")";
   return;
@@ -147,7 +183,7 @@ int ImpPrinter::visit(ParenthExp* ep) {
 }
 
 int ImpPrinter::visit(CondExp* e) {
-  cout << "ifexp(";
+  cout << getIndentation() << "ifexp(";
   e->cond->accept(this);
   cout << ",";
   e->etrue->accept(this);

@@ -1,0 +1,45 @@
+start: skip
+enter 2
+alloc 2
+mark
+pusha Lmain
+call
+halt
+Lsumaprint: skip
+enter 2
+alloc 0
+loadr -3
+push  20
+add
+print
+return 4
+Lmain: skip
+enter 4
+alloc 2
+push  10
+storer 1
+push  5
+store 1
+load 1
+loadr 1
+add
+print
+push 1
+jmpz L0
+push  100
+storer 2
+loadr 2
+loadr 1
+add
+print
+goto L1
+L0: skip
+L1: skip
+load 1
+loadr 1
+add
+print
+loadr 1
+pusha Lsumaprint
+call
+return 3

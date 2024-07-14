@@ -1,0 +1,9 @@
+fun void main()
+  var int x, y;
+  x = 100; y = 10;
+  for x in (y, y+2) do
+    print(x)
+  endfor;
+  print(x);
+  return()
+endfun

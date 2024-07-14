@@ -1,7 +1,10 @@
 #include "imp_codegen.hh"
 
 ImpCodeGen::ImpCodeGen(ImpTypeChecker* a):analysis(a) {
-
+  // Cambio 4
+  nolabel = "";
+  current_label = 0;
+  mem_locals = 0;
 }
 
 void ImpCodeGen::codegen(string label, string instr) {
@@ -51,7 +54,7 @@ void ImpCodeGen::codegen(Program* p, string outfname) {
 // Este codigo esta completo
 void ImpCodeGen::visit(Program* p) {
   current_dir = 0;  // usado para generar nuebvas firecciones
-  direcciones.add_level();
+  addresses.add_level();
   process_global = true;
   p->var_decs->accept(this);
   process_global = false;
@@ -68,22 +71,23 @@ void ImpCodeGen::visit(Program* p) {
   codegen(nolabel,"halt");
 
   p->fun_decs->accept(this);
-  direcciones.remove_level();
+  addresses.remove_level();
   return;  
 }
 
 void ImpCodeGen::visit(Body * b) {
-
-  // guardar direccion inicial current_dir
   
-  direcciones.add_level();
+  // guardar direccion inicial current_dir
+  int var = current_dir;  
+  addresses.add_level();
   
   b->var_decs->accept(this);
   b->slist->accept(this);
   
-  direcciones.remove_level();
+  addresses.remove_level();
 
   // restaurar dir
+  current_dir = var;
   return;
 }
 
@@ -95,7 +99,6 @@ void ImpCodeGen::visit(VarDecList* s) {
   return;
 }
 
-// Se crea entrada para declaraciones de variables
 void ImpCodeGen::visit(VarDec* vd) {
   list<string>::iterator it;
   for (it = vd->vars.begin(); it != vd->vars.end(); ++it){
@@ -103,7 +106,7 @@ void ImpCodeGen::visit(VarDec* vd) {
     VarEntry ventry;
     ventry.dir = current_dir;
     ventry.is_global = process_global;
-    direcciones.add_var(*it, ventry);
+    addresses.add_var(*it, ventry);
   }
   return;
 }
@@ -122,17 +125,24 @@ void ImpCodeGen::visit(FunDec* fd) {
   int m = fd->types.size();
   VarEntry ventry;
 
-  // agregar direcciones de argumentos
+  int i = 1;
+  for(auto it = fd->vars.begin(); it != fd->vars.end(); ++it) {
+    ventry.dir = i - (m + 3);
+    ventry.is_global = false;
+    addresses.add_var(*it, ventry);
+    i++;
+  }
 
-  // agregar direccion de return
+  ventry.dir = - (m + 3);
+  ventry.is_global = false;
+  addresses.add_var("return", ventry);
 
-  // generar codigo para fundec
-
+  codegen(get_flabel(fd->fname),"skip");
+  codegen(nolabel,"enter",fentry.mem_locals + fentry.max_stack);
+  codegen(nolabel,"alloc",fentry.mem_locals);
   num_params = m;
 
-  //fd->body->accept(this);
-  // -- sacar comentarios para generar codigo del cuerpo
-
+  fd->body->accept(this);
   return;
 }
 
@@ -147,16 +157,19 @@ void ImpCodeGen::visit(StatementList* s) {
 
 void ImpCodeGen::visit(AssignStatement* s) {
   s->rhs->accept(this);
-  VarEntry ventry = direcciones.lookup(s->id);
+  VarEntry ventry = addresses.lookup(s->id);
   // generar codigo store/storer
-  codegen(nolabel,"store", 100); // modificar 100 global vs local
-
+  if (ventry.is_global)
+  codegen(nolabel,"store", ventry.dir);
+  else
+    codegen(nolabel,"storer", ventry.dir);
   return;
 }
 
 void ImpCodeGen::visit(PrintStatement* s) {
   s->e->accept(this);
-  code << "print" << endl;;
+  //code << "print" << endl;
+  codegen(nolabel,"print");
   return;
 }
 
@@ -177,6 +190,46 @@ void ImpCodeGen::visit(IfStatement* s) {
   return;
 }
 
+void ImpCodeGen::visit(FCallStatement* s) {
+  FEntry fentry = analysis->ftable.lookup(s->fname);
+  ImpType ftype = fentry.ftype;
+
+  for (auto it = s->args.begin(); it != s->args.end(); ++it) {
+    (*it)->accept(this);
+  }
+  codegen(nolabel, "pusha", get_flabel(s->fname));
+  codegen(nolabel, "call");
+  return;
+}
+
+void ImpCodeGen::visit(ForDoStatement* s) {
+  string l1 = next_label();
+  string l2 = next_label();
+  // string l3 = next_label();
+  // string l4 = next_label();
+  
+  current_dir++;
+  VarEntry ventry;
+  ventry.dir = current_dir;
+  ventry.is_global = false;
+  addresses.add_var(s->id, ventry);
+  s->start->accept(this);
+  codegen(nolabel, "store", ventry.dir);
+  codegen(l1, "skip");
+  codegen(nolabel, "load", ventry.dir);
+  s->end->accept(this);
+  codegen(nolabel, "sub");
+  codegen(nolabel, "jmpz", l2);
+  s->body->accept(this);
+  codegen(nolabel, "load", ventry.dir);
+  codegen(nolabel, "push", 1);
+  codegen(nolabel, "add");
+  codegen(nolabel, "store", ventry.dir);
+  codegen(nolabel, "goto", l1);
+  codegen(l2, "skip");
+  return;
+}
+
 void ImpCodeGen::visit(WhileStatement* s) {
   string l1 = next_label();
   string l2 = next_label();
@@ -192,12 +245,13 @@ void ImpCodeGen::visit(WhileStatement* s) {
 }
 
 void ImpCodeGen::visit(ReturnStatement* s) {
-  // agregar codigo
-  
-  codegen(nolabel,"return", 100);  // modifcar 100
+  if(s->e != NULL){
+    s->e->accept(this);
+    codegen(nolabel, "storer", -(num_params + 3));
+  }
+  codegen(nolabel, "return", num_params + 3); 
   return;
 }
-
 
 int ImpCodeGen::visit(BinaryExp* e) {
   e->left->accept(this);
@@ -229,7 +283,7 @@ int ImpCodeGen::visit(TrueFalseExp* e) {
 }
 
 int ImpCodeGen::visit(IdExp* e) {
-  VarEntry ventry = direcciones.lookup(e->id);
+  VarEntry ventry = addresses.lookup(e->id);
   if (ventry.is_global)
     codegen(nolabel,"load",ventry.dir);
   else
@@ -260,9 +314,15 @@ int ImpCodeGen::visit(FCallExp* e) {
 
   FEntry fentry = analysis->ftable.lookup(e->fname);
   ImpType ftype = fentry.ftype;
+  if(ftype.ttype != ImpType::VOID){
+    codegen(nolabel,"alloc",1);
+  }    
 
-  // agregar codigo
-
+  for (auto it = e->args.begin(); it != e->args.end(); ++it) {
+    (*it)->accept(this);
+  }
+  codegen(nolabel, "mark");
+  codegen(nolabel,"pusha",get_flabel(e->fname));
   codegen(nolabel,"call");
   return 0;
 }

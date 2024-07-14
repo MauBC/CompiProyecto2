@@ -50,6 +50,4 @@ int main(int argc, const char* argv[]) {
   cg.codegen(program, outfname);
 
   delete program;
-
-
 }

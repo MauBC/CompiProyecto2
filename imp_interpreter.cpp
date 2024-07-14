@@ -118,6 +118,63 @@ void ImpInterpreter::visit(IfStatement* s) {
   return;
 }
 
+//
+void ImpInterpreter::visit(ForDoStatement* s) {
+  ImpValue start = s->start->accept(this);
+  ImpValue end = s->end->accept(this);
+  if (start.type != TINT || end.type != TINT) {
+    cout << "Error: Start and end types in the for must be integers" << endl;
+    exit(0);
+  }
+  env.add_level();
+  env.add_var(s->id, start);
+  ImpValue v;
+  v.set_default_value(TINT);
+  if (start.int_value > end.int_value) {
+    cout << "start > end in for" << endl;
+  }
+  for (int i = start.int_value; i <= end.int_value; i++) {
+    v.int_value = i;
+    env.update(s->id, v);
+    s->body->accept(this);
+  }
+  env.remove_level();
+  return;
+}
+
+void ImpInterpreter::visit(FCallStatement* s) {
+  FunDec* fdec = fdecs.lookup(s->fname);
+  env.add_level();
+  list<Exp*>::iterator it;
+  list<string>::iterator varit;
+  list<string>::iterator vartype;
+  ImpVType tt;
+  if (fdec->vars.size() != s->args.size()) {
+    cout << "Error: Incorrect number of parameters in call to " << fdec->fname << endl;
+    exit(0);
+  }
+  for (it = s->args.begin(), varit = fdec->vars.begin(), vartype = fdec->types.begin();
+       it != s->args.end(); ++it, ++varit, ++vartype) {
+    tt = ImpValue::get_basic_type(*vartype);
+    ImpValue v = (*it)->accept(this);
+    if (v.type != tt) {
+      cout << "FCall error: Param and arg types do not match in function " << fdec->fname << endl;
+      exit(0);
+    }
+    env.add_var(*varit, v);
+  }
+  retcall = false;
+  fdec->body->accept(this);
+  if (!retcall) {
+    cout << "Error: Function " << s->fname << " don't execute RETURN" << endl;
+    exit(0);
+  }
+  retcall = false;
+  env.remove_level();
+  return;
+} 
+//
+
 void ImpInterpreter::visit(WhileStatement* s) {
   ImpValue v = s->cond->accept(this);
   if (v.type != TBOOL) {

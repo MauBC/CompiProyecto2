@@ -3,10 +3,10 @@
 #include "imp_parser.hh"
 
 
-const char* Token::token_names[32] = {
-  "LPAREN" , "RPAREN", "PLUS", "MINUS", "MULT","DIV","EXP","LT","LTEQ","EQ",
+const char* Token::token_names[35] = {
+  "LPAREN" , "RPAREN", "PLUS", "MINUS", "MULT","DIV","EXP","LT","LTEQ",
   "NUM", "ID", "PRINT", "SEMICOLON", "COMMA", "ASSIGN", "CONDEXP", "IF", "THEN", "ELSE", "ENDIF", "WHILE", "DO",
-  "ENDWHILE", "ERR", "END", "VAR", "RETURN", "FUN", "ENDFUN", "TRUE", "FALSE" };
+  "ENDWHILE", "ERR", "END", "VAR", "RETURN", "FUN", "ENDFUN", "TRUE", "FALSE", "FOR", "IN", "ENDFOR" };
 
 Token::Token(Type type):type(type) { lexema = ""; }
 
@@ -43,6 +43,9 @@ Scanner::Scanner(string s):input(s),first(0),current(0) {
   reserved["endfun"] = Token::ENDFUN;
   reserved["true"] = Token::TRUE;
   reserved["false"] = Token::FALSE;
+  reserved["for"] = Token::FOR;
+  reserved["in"] = Token::IN;
+  reserved["endfor"] = Token::ENDFOR;
 }
 
 Token* Scanner::nextToken() {
@@ -300,12 +303,25 @@ Stm* Parser::parseStatement() {
   Body *tb, *fb;
   if (match(Token::ID)) {
     string lex = previous->lexema;
-    if (!match(Token::ASSIGN)) {
-      cout << "Error: esperaba =" << endl;
-      exit(0);
+    if (check(Token::ASSIGN) || check(Token::LPAREN)) {
+      if (match(Token::ASSIGN)) {
+        s = new AssignStatement(lex, parseCExp());
+      } else if (match(Token::LPAREN)) {
+        list<Exp*> args;
+        if (!check(Token::RPAREN)) {
+          args.push_back(parseCExp());
+          while(match(Token::COMMA)) {
+            args.push_back(parseCExp());
+          }
+        }
+        if (!match(Token::RPAREN)) parserError("Expecting rparen");
+        return new FCallStatement(lex, args);
+      }
+      else {
+        cout << "Error: esperaba = o (" << endl;
+        exit(0);
+      }      
     }
-    s = new AssignStatement(lex, parseCExp());
-    //memoria_update(lex, v);
   } else if (match(Token::PRINT)) {
     if (!match(Token::LPAREN)) {
       cout << "Error: esperaba ( " << endl;
@@ -343,7 +359,20 @@ Stm* Parser::parseStatement() {
       e = parseCExp();
     if (!match(Token::RPAREN)) parserError("Esperaba 'rparen'");
     s = new ReturnStatement(e);
-    
+  
+  } else if(match(Token::FOR)) {
+    if (!match(Token::ID)) parserError("Expecting id in for statement");
+    string id = previous->lexema;
+    if (!match(Token::IN)) parserError("Expecting 'in' in for statement");
+    if (!match(Token::LPAREN)) parserError("Expecting left parenthesis");
+    Exp* start = parseCExp();
+    if (!match(Token::COMMA)) parserError("Expecting comma in for statement");
+    Exp* end = parseCExp();
+    if (!match(Token::RPAREN)) parserError("Expecting right parenthesis");
+    if (!match(Token::DO)) parserError("Expecting 'do' in for statement");
+    tb = parseBody();
+    if (!match(Token::ENDFOR)) parserError("Expecting 'endfor' in for statement");
+    s = new ForDoStatement(id,start,end,tb);
   } else {
     cout << "No se encontro Statement" << endl;
     exit(0);
