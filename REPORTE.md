@@ -59,8 +59,186 @@ void ImpTypeChecker::visit(VarDec* vd) {
 }
 ...
 ```
-* La altura máxima de la pila
+* La altura máxima de la pila se calcula llamando a estás dos funciones en los demás métodos visit.
 ```cpp
+...
+void ImpTypeChecker::sp_incr(int n) {
+  sp += n; 
+  if (sp > max_sp) max_sp = sp;
+}
+...
+void ImpTypeChecker::sp_decr(int n) {
+  sp -= n;
+  if (sp < 0) {
+    cout << "stack less than 0" << endl;
+    exit(0);
+  }
+}
+...
+````
+* Los métodos que aumentan el `sp` son los siguientes ya que requiren hacer `push` o `load` a la pila.
+```cpp
+ImpType ImpTypeChecker::visit(NumberExp* e) {
+  sp_incr(1); // <-
+  return inttype;
+}
+ImpType ImpTypeChecker::visit(IdExp* e) {
+  if (env.check(e->id)) {
+    sp_incr(1); // <-
+    return env.lookup(e->id);
+  }
+  else {
+    cout << "Undefined variable: " << e->id << endl;
+    exit(0);
+  }
+}
+ImpType ImpTypeChecker::visit(TrueFalseExp* e) {
+  sp_incr(1);
+  return booltype;
+}
+ImpType ImpTypeChecker::visit(FCallExp* e) {
+  if (!env.check(e->fname)) {
+    cout << "(Function call): " << e->fname <<  " is undeclared" << endl;
+    exit(0);
+  }
+  ImpType funtype = env.lookup(e->fname);
+  if (funtype.ttype != ImpType::FUN) {
+    cout << "(Function call): " << e->fname <<  " is not a function" << endl;
+    exit(0);
+  }
+
+  // check args
+  int num_fun_args = funtype.types.size() - 1;
+  int num_fcall_args = e->args.size();
+  ImpType rtype;
+  rtype.set_basic_type(funtype.types[num_fun_args]);
+
+  // que hacer con sp y el valor de retorno?
+  if (rtype.ttype != ImpType::VOID) sp_incr(1); <-
+
+  if (num_fun_args != num_fcall_args) {
+    cout << "(Function call) Number of arguments does not correspond to declaration of: " << e->fname << endl;
+    exit(0);
+  }
+  ImpType argtype;
+  list<Exp*>::iterator it;
+  int i = 0;
+  for (it = e->args.begin(); it != e->args.end(); ++it) {
+    argtype = (*it)->accept(this);
+    if (argtype.ttype != funtype.types[i]) {
+      cout << "(Function call) Argument type does not correspond to parameter type in fcall of: " << e->fname << endl;
+      exit(0);
+    }
+    i++;
+  }
+  sp_decr(1); <-
+  return rtype;
+}
+```
+* Los métodos que decrementan el `sp` son los siguientes ya que requiren hacer `store` del top de la pila o realizan alguna operación en la pila.
+```cpp
+void ImpTypeChecker::visit(AssignStatement* s) {
+  ImpType type = s->rhs->accept(this);
+  if (!env.check(s->id)) {
+    cout << "Variable " << s->id << " undefined" << endl;
+    exit(0);
+  }
+  sp_decr(1); // <-
+  ImpType var_type = env.lookup(s->id);  
+  if (!type.match(var_type)) {
+    cout << "Wrong type in Assign a " << s->id << endl;
+    exit(0);
+  }
+  return;
+}
+
+void ImpTypeChecker::visit(PrintStatement* s) {
+  s->e->accept(this);
+  sp_decr(1); // <-
+  return;
+}
+
+void ImpTypeChecker::visit(IfStatement* s) {
+  if (!s->cond->accept(this).match(booltype)) {
+    cout << "Conditional expression in IF must be bool" << endl;
+    exit(0);
+  }
+  sp_decr(1); // <-
+  s->tbody->accept(this);
+  if (s->fbody != NULL)
+    s->fbody->accept(this);
+  return;
+}
+void ImpTypeChecker::visit(WhileStatement* s) {
+  if (!s->cond->accept(this).match(booltype)) {
+    cout << "Conditional expression must be bool" << endl;
+    exit(0);
+  }
+  sp_decr(1); // <-
+  s->body->accept(this);
+ return;
+}
+
+ImpType ImpTypeChecker::visit(BinaryExp* e) {
+  ImpType t1 = e->left->accept(this);
+  ImpType t2 = e->right->accept(this);
+  if (!t1.match(inttype) || !t2.match(inttype)) {
+    cout << "Types in BinExp must be int" << endl;
+    exit(0);
+  }
+  ImpType result;
+  switch(e->op) {
+  case PLUS: 
+  case MINUS:
+  case MULT:
+  case DIV:
+  case EXP:
+    result = inttype;
+    break;
+  case LT: 
+  case LTEQ:
+  case EQ:
+    result = booltype;
+    break;
+  }
+  sp_decr(1); // <-
+  return result;
+}
+ImpType ImpTypeChecker::visit(CondExp* e) {
+  if (!e->cond->accept(this).match(booltype)) {
+    cout << "Type in ifexp must be bool" << endl;
+    exit(0);
+  }
+  sp_decr(1); // <-
+  int sp_start = sp;
+  ImpType ttype =  e->etrue->accept(this);
+  sp = sp_start;
+  if (!ttype.match(e->efalse->accept(this))) {
+    cout << "Types in ifexp must be equal" << endl;
+    exit(0);
+  }
+  return ttype;
+}
+void ImpTypeChecker::visit(ReturnStatement* s) {
+  ImpType rtype = env.lookup("return");
+  ImpType etype;
+  if (s->e != NULL) {
+    etype = s->e->accept(this);
+    sp_decr(1); // <-
+  }
+  else
+    etype = voidtype;
+  if (!rtype.match(etype)) {
+    cout << "Return type mismatch: " << rtype << "<->" << etype << endl;
+    exit(0);
+  }
+  return;
+}
+// También ImpType ImpTypeChecker::visit(FCallExp* e)
+```
+* Luego cuando se recorre la lista de declaraciones de funciones se setean los varlores correspondiente máximos de `max_dir` y `max_sp`.
+````cpp
+...
 void ImpTypeChecker::visit(FunDecList* s) {
   list<FunDec*>::iterator it;
   for (it = s->fdlist.begin(); it != s->fdlist.end(); ++it) {
@@ -83,8 +261,6 @@ void ImpTypeChecker::visit(FunDecList* s) {
   return;
 }
 ```
-
-
 
 **Implementación en el Codegen**
 * Para las direcciones de las varibales globales y locales hemos considerado una estructura `VarEntry`
@@ -136,9 +312,6 @@ void ImpCodeGen::visit(ReturnStatement* s) {
   return;
 }
 ```
-
-
-
 
 ## 2. Implementar FCallStm
 **REPORTE:** Indicar los cambios al programa (parser, typechecker, codegen, etc) y las definiciones de typecheck y codegen.
