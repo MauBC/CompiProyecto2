@@ -236,8 +236,8 @@ void ImpTypeChecker::visit(ReturnStatement* s) {
 }
 // También ImpType ImpTypeChecker::visit(FCallExp* e)
 ```
-* Luego cuando se recorre la lista de declaraciones de funciones se setean los varlores correspondiente máximos de `max_dir` y `max_sp`.
-````cpp
+* Luego cuando se recorre la lista de declaraciones de funciones se setean los valores correspondiente máximos de `max_dir` y `max_sp`.
+```cpp
 ...
 void ImpTypeChecker::visit(FunDecList* s) {
   list<FunDec*>::iterator it;
@@ -254,13 +254,14 @@ void ImpTypeChecker::visit(FunDecList* s) {
     fentry.fname = fname;
     fentry.ftype = env.lookup(fname);
     fnames.push_back(fname);
-    fentry.max_stack = max_sp;
-    fentry.mem_locals = max_dir;
+    fentry.max_stack = max_sp; // <-
+    fentry.mem_locals = max_dir; // <-
     ftable.add_var(fname, fentry);
   }
   return;
 }
 ```
+* Es importante también mencionar que se uso la estrucutura `FEntry` y un eviroment de funciones con un solo nivel. No es necesario más niveles ya que la gramática IMP-FUN no nos permite declarar funciones dentro de funciones.
 
 **Implementación en el Codegen**
 * Para las direcciones de las varibales globales y locales hemos considerado una estructura `VarEntry`
@@ -604,6 +605,7 @@ void ImpPrinter::visit(ForDoStatement* s) {
 }
 ```
 **Definicición del typecheck**
+
 ```
 
 ```
