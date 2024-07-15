@@ -448,11 +448,22 @@ void ImpPrinter::visit(FCallStatement* s) {
 ````
 **Definicición del typecheck**
 ```
-
+tcheck(env,FCallStm(fname,e1::..::env)
+		ifi
+		env(fname) = (T1,...,Tn)->Tret
+		tcheck(env,ei) = Ti
 ```
 
 **Definicición del codegen**
 ```
+codegen(FCallStatement(g,e1,...,en)) =
+		alloc 1 // espacio para valor de retorno (opt.)
+		codegen(e1)
+		...
+		codegen(en)
+		mark
+		pusha _g // dirección de inicio de g
+		call
 ```
 
 ## 3. Implementar ForDoStm
@@ -607,8 +618,8 @@ void ImpPrinter::visit(ForDoStatement* s) {
 **Definicición del typecheck**
 ```
 tcheck(env,ForDoStatement(id,e1,e2,body)) ifi
-tcheck(env,id) = env(x) && tcheck(env,e1) = int && tcheck(env,e2) = 1
-&& tcheck(env,body) 
+	tcheck(env,id) = env(x) && tcheck(env,e1) = int && tcheck(env,e2) = 1
+	&& tcheck(env,body) 
 ```
 **Definicición del codegen**
 ```
