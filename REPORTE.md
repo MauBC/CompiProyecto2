@@ -605,11 +605,19 @@ void ImpPrinter::visit(ForDoStatement* s) {
 }
 ```
 **Definicición del typecheck**
-
 ```
-
+tcheck(env,ForDoStatement(id,e1,e2,body)) ifi
+tcheck(env,id) = env(x) && tcheck(env,e1) = int && tcheck(env,e2) = 1
+&& tcheck(env,body) 
 ```
-
 **Definicición del codegen**
 ```
+codegen(ForDoStatement(id, e1, e2, body)):
+	enter k 
+	codegen(id) // Genera código para el identificador (puede ser una variable o contador)
+	mark	
+	codegen(e1) // Genera código para la expresión de inicio (puede ser la inicialización del contador)
+	codegen(e2) // Genera código para la condición de continuación (puede ser la condición de salida del bucle)	codegen(body); // Genera código para el cuerpo del bucle	
+	goto mark
+	loop_end:skip
 ```
